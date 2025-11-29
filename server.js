@@ -10,15 +10,12 @@ import weatherRoute from "./routes/weather.js";
 import commandsRoute from "./routes/commands.js";
 import aiRoute from "./routes/ai.js";
 
-// Connect to MongoDB
-connectDB(
-    () => console.log("MongoDB Connected"),
-    () => console.error("MongoDB Connection Error")
-);
-
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Connect to MongoDB
+connectDB();
 
 // routes
 app.use("/chat", chatRoute);
@@ -27,5 +24,39 @@ app.use("/weather", weatherRoute);
 app.use("/cmd", commandsRoute);
 app.use("/ai", aiRoute);
 
-const PORT = 5000;
-app.listen(PORT, () => console.log("Backend running on " + PORT));
+// Health check endpoint
+app.get("/", (req, res) => {
+    res.json({
+        status: "running",
+        message: "AI Assistant Backend is running! 🚀",
+        endpoints: {
+            chat: "/chat",
+            weather: "/weather",
+            email: "/email",
+            commands: "/cmd",
+            ai: "/ai"
+        }
+    });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error("Error:", err);
+    res.status(500).json({
+        error: "Internal server error",
+        message: err.message
+    });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`\n🚀 AI Assistant Backend running on port ${PORT}`);
+    console.log(`📡 API available at http://localhost:${PORT}`);
+    console.log(`\nEndpoints:`);
+    console.log(`  - POST /chat - Main chat endpoint`);
+    console.log(`  - GET  /weather - Weather information`);
+    console.log(`  - POST /email - Send emails`);
+    console.log(`  - POST /cmd - Command detection`);
+    console.log(`  - POST /ai/similarity - Text similarity`);
+    console.log(`  - POST /ai/embeddings - Text embeddings\n`);
+});

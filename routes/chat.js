@@ -18,46 +18,67 @@ import {
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-    const {
-        message
-    } = req.body;
+    try {
+        const {
+            message,
+            conversationHistory = []
+        } = req.body;
 
-    // 1. Detect command
-    const cmd = detectCommand(message);
-
-    if (cmd) {
-        if (cmd.type === "weather") {
-            return res.json({
-                reply: await getWeather("indore")
+        if (!message || typeof message !== 'string') {
+            return res.status(400).json({
+                error: "Invalid message format"
             });
         }
 
-        if (cmd.type === "timer") {
-            return res.json({
-                reply: setTimer(cmd.minutes)
-            });
+        // 1. Detect command
+        const cmd = detectCommand(message);
+
+        if (cmd) {
+            if (cmd.type === "weather") {
+                const weatherInfo = await getWeather("indore");
+                const reply = await askAI(`User asked about weather. The weather data is: ${weatherInfo}. Respond naturally and conversationally.`, conversationHistory);
+                return res.json({
+                    reply
+                });
+            }
+
+            if (cmd.type === "timer") {
+                setTimer(cmd.minutes);
+                const reply = await askAI(`User asked to set a timer for ${cmd.minutes} minutes. Confirm it naturally and friendly.`, conversationHistory);
+                return res.json({
+                    reply
+                });
+            }
+
+            if (cmd.type === "email") {
+                const r = await sendMail("to@gmail.com", "AI Mail", "Hello!");
+                const reply = await askAI(`User asked to send an email. Result: ${r}. Respond naturally.`, conversationHistory);
+                return res.json({
+                    reply
+                });
+            }
+
+            if (cmd.type === "open") {
+                const reply = await askAI(`User asked to open ${cmd.target}. Confirm you're opening it in a friendly way.`, conversationHistory);
+                return res.json({
+                    reply,
+                    action: `open:${cmd.target}`,
+                });
+            }
         }
 
-        if (cmd.type === "email") {
-            const r = await sendMail("to@gmail.com", "AI Mail", "Hello!");
-            return res.json({
-                reply: r
-            });
-        }
-
-        if (cmd.type === "open") {
-            return res.json({
-                reply: `Opening ${cmd.target}...`,
-                action: `open:${cmd.target}`,
-            });
-        }
+        // No command → normal AI chat with conversation history
+        const reply = await askAI(message, conversationHistory);
+        return res.json({
+            reply
+        });
+    } catch (error) {
+        console.error("Chat route error:", error);
+        return res.status(500).json({
+            error: "Failed to process message",
+            message: error.message
+        });
     }
-
-    // No command → normal AI chat
-    const reply = await askAI(message);
-    return res.json({
-        reply
-    });
 });
 
 export default router;
